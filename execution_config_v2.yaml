@@ -1,0 +1,8 @@
+iamRoleARN: ""
+inputs: {}
+envs: {}
+kubeServiceAcct: ""
+targetDomain: ""
+targetProject: ""
+version: IxnC3CLl_FlGhAXxYR3U6w
+workflow: ml_pipeline_improved.credit_scoring_pipeline

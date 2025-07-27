@@ -1,0 +1,22 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::bsingh-ml-workflows",
+                "arn:aws:s3:::bsingh-ml-workflows/*",
+                "arn:aws:s3:::education-eks-vv8vcaqw-flyte-metadata-vv8vcaqw",
+                "arn:aws:s3:::education-eks-vv8vcaqw-flyte-metadata-vv8vcaqw/*",
+                "arn:aws:s3:::education-eks-vv8vcaqw-flyte-userdata-vv8vcaqw",
+                "arn:aws:s3:::education-eks-vv8vcaqw-flyte-userdata-vv8vcaqw/*"
+            ]
+        }
+    ]
+}

@@ -165,12 +165,3 @@ Temporary Items
 
 # Flyte configuration (contains local endpoints)
 .flyte/
-
-# AWS policies with account-specific info
-s3-access-policy*.json
-
-# Execution configs (may contain version IDs)
-execution_config*.yaml
-
-# CSV data files
-*.csv
