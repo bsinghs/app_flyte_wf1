@@ -1,0 +1,8 @@
+apiVersion: flyte.lyft.com/v1alpha1
+kind: FlyteProject
+metadata:
+  name: ml-workflows
+spec:
+  id: ml-workflows
+  name: "ML Workflows Project"
+  description: "Machine Learning workflows for credit scoring and other ML tasks"
