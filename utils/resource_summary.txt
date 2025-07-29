@@ -1,0 +1,15 @@
+============================================================
+🚀 FLYTE WORKFLOW RESOURCE SUMMARY
+============================================================
+
+📋 load_data:        (requests 500m CPU, 500Mi memory, limits 1 CPU, 1Gi memory)
+📋 clean_data:       (requests 200m CPU, 200Mi memory, limits 500m CPU, 500Mi memory)
+📋 features:         (requests 300m CPU, 300Mi memory, limits 500m CPU, 500Mi memory)
+📋 train_model:      (requests 800m CPU, 800Mi memory, limits 1 CPU, 1Gi memory)
+📋 evaluate_model:   (requests 200m CPU, 200Mi memory, limits 500m CPU, 500Mi memory)
+
+💡 Tips:
+   • Requests = guaranteed resources
+   • Limits = maximum allowed resources
+   • CPU: 1000m = 1 core, 500m = 0.5 cores
+   • Memory: Mi = mebibytes, Gi = gibibytes

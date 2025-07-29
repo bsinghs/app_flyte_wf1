@@ -1,0 +1,8 @@
+======================================================================
+🎯 FLYTE EXECUTION RESOURCE USAGE
+📋 Execution ID: aj84ckgrqc52cs82zq4q
+======================================================================
+
+❌ No pods found for this execution
+   • Check if the execution ID is correct
+   • Ensure kubectl is configured for your cluster

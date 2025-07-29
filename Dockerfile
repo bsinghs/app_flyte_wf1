@@ -1,6 +1,7 @@
-FROM python:3.9-slim
+# Use prebuilt flytekit base image for quick setup
+FROM ghcr.io/flyteorg/flytekit:py3.9-1.10.3
 
-# Install system dependencies
+# Install system dependencies if needed
 RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
@@ -8,13 +9,18 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
+# Copy and install requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY ml_pipeline_improved.py .
-COPY config.py .
+# Install additional ML packages for your scheduled pipeline
+RUN pip install --no-cache-dir \
+    seaborn \
+    plotly \
+    xgboost
 
-# Set the command to run when container starts
-CMD ["python", "ml_pipeline_improved.py"]
+# Copy all application code
+COPY . .
+
+# Default command for Flyte execution
+CMD ["pyflyte", "serve"]

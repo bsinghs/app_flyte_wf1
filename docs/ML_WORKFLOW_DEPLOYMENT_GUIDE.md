@@ -93,9 +93,10 @@ flytectl --config .flyte/config.yaml get project ml-workflows
 
 ### 2. Workflow Registration
 
-#### Register ML Pipeline
+#### Register ML Pipeline (Recommended - Public Image)
 ```bash
-# Register your workflow with proper resource constraints and working image
+# ✅ RECOMMENDED: Use public Flytekit image
+# This is what you should use for most development work
 pyflyte --config .flyte/config.yaml register \
   --project ml-workflows \
   --domain development \
@@ -108,9 +109,10 @@ flytectl --config .flyte/config.yaml get workflows \
   --domain development
 ```
 
-#### Register with Custom Image (if you have one)
+#### Register with Custom Image (Advanced - Only if Needed)
 ```bash
-# If you build your own Docker image
+# ⚠️  ADVANCED: Only use if you need custom dependencies not available in requirements.txt
+# You must first build and push your custom Docker image to a registry
 pyflyte --config .flyte/config.yaml register \
   --project ml-workflows \
   --domain development \

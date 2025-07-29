@@ -32,6 +32,12 @@ This is a machine learning workflow application built for deployment on Flyte or
 │   ├── execution_config*.yaml
 │   └── s3-access-policy*.json
 │
+├── 🛠️ utils/                  # Resource monitoring utilities
+│   ├── README.md
+│   ├── resource_summary.py
+│   ├── resource_card.py
+│   └── live_execution_monitor.py
+│
 └── .flyte/                   # Flyte local development
 ```
 
@@ -53,6 +59,11 @@ flytectl get execution --project flyte-ml-workflow --domain development <executi
 
 # View logs
 flytectl get logs --project flyte-ml-workflow --domain development <execution-name>
+
+# Monitor resources (using utils)
+python utils/resource_card.py              # Quick resource overview
+python utils/resource_summary.py           # Detailed analysis
+python utils/live_execution_monitor.py <execution-id>  # Live monitoring
 ```
 
 ## 📊 ML Workflow Features
@@ -70,7 +81,17 @@ flytectl get logs --project flyte-ml-workflow --domain development <execution-na
 - **S3 Bucket**: `flyte-ml-workflow-data`
 - **Resource Limits**: 500m CPU, 1Gi memory
 
-## 📚 Documentation
+## �️ Resource Monitoring
+
+The `utils/` directory contains powerful tools for monitoring and analyzing your workflow resources:
+
+- **Resource Card**: `python utils/resource_card.py` - Beautiful visual summary
+- **Resource Summary**: `python utils/resource_summary.py` - Detailed analysis  
+- **Live Monitor**: `python utils/live_execution_monitor.py <execution-id>` - Real-time monitoring
+
+See `utils/README.md` for detailed usage instructions.
+
+## �📚 Documentation
 
 - **[ML Workflow Guide](docs/ML_WORKFLOW_DEPLOYMENT_GUIDE.md)**: Complete deployment instructions
 - **[Flytectl Deep Dive](docs/FLYTECTL_DEEP_DIVE.md)**: Advanced CLI usage
