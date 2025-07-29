@@ -1,0 +1,50 @@
+# Option 2: Multi-stage build (optimized for production)
+# Build stage
+FROM python:3.9-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional packages
+RUN pip install --no-cache-dir \
+    flytekit==1.10.3 \
+    seaborn \
+    plotly \
+    xgboost
+
+# Production stage
+FROM python:3.9-slim
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user
+RUN useradd -m -u 1000 flyte
+
+# Copy application code
+COPY --chown=flyte:flyte . .
+
+# Switch to non-root user
+USER flyte
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV FLYTE_INTERNAL_IMAGE=true
+
+# Default command
+CMD ["pyflyte", "serve", "--host", "0.0.0.0"]

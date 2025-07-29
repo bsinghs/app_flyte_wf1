@@ -1,0 +1,53 @@
+# Option 1: Start from Ubuntu base (full control)
+FROM ubuntu:20.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.9 \
+    python3-pip \
+    python3.9-dev \
+    gcc \
+    g++ \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.9 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+# Install flytekit first
+RUN pip install --no-cache-dir flytekit==1.10.3
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional packages for your specific needs
+RUN pip install --no-cache-dir \
+    seaborn \
+    plotly \
+    xgboost \
+    lightgbm \
+    catboost
+
+# Copy your application code
+COPY . .
+
+# Create a non-root user for security
+RUN useradd -m -u 1000 flyte
+RUN chown -R flyte:flyte /app
+USER flyte
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV FLYTE_INTERNAL_IMAGE=true
+
+# Default command - this will make the container ready to run workflows
+CMD ["python", "-c", "print('Flyte Docker container ready! Your workflows are available.'); print('Container will run for 5 seconds...'); import time; time.sleep(5); print('Container finished!')"]
