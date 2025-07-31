@@ -6,6 +6,8 @@ from sklearn.metrics import accuracy_score
 import logging
 import os
 from typing import Tuple
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'configs'))
 from config import CREDIT_SCORING_DATA_PATH
 
 
