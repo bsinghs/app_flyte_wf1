@@ -45,35 +45,216 @@ A comprehensive machine learning workflow project built with Flyte, featuring en
 └── config/                         # Legacy config directory
 ```
 
-## 🚀 Quick Start
+## 🚀 ML Workflow Deployment Flow
 
-### Prerequisites
-- Python 3.9+
-- Docker
-- Flyte cluster access
+```mermaid
+flowchart TD
+    A[📋 Prerequisites & Setup] --> B[🔐 AWS Authentication]
+    B --> C[🔗 Connect to Flyte Cluster]
+    C --> D[⚙️ Configure Flyte CLI]
+    D --> E[📁 Project Management]
+    E --> F[📝 Workflow Registration]
+    F --> G[🚀 Launch Plan Management]
+    G --> H[▶️ Execution Commands]
+    H --> I[📊 Monitor Executions]
+    I --> J{🏃 Execution Status}
+    J -->|Success| K[✅ Completed]
+    J -->|Failed| L[🔍 Debugging]
+    J -->|Running| I
+    L --> M[🛠️ Troubleshooting]
+    M --> N[🔧 Fix Issues]
+    N --> F
 
-### Local Development
-```bash
-# Install dependencies
-pip install -r src/configs/requirements.txt
+    %% Styling
+    classDef setupClass fill:#e1f5fe
+    classDef authClass fill:#f3e5f5
+    classDef deployClass fill:#e8f5e8
+    classDef execClass fill:#fff3e0
+    classDef monitorClass fill:#fce4ec
+    classDef debugClass fill:#ffebee
 
-# Configure Flyte connection
-cp src/configs/pyflyte.config ~/.flyte/config.yaml
-
-# Run workflow locally
-pyflyte run src/workflows/ml_pipeline_improved.py credit_scoring_pipeline
-
-# Register workflow to remote Flyte cluster
-pyflyte register src/workflows/ml_pipeline_improved.py --project your-project
+    class A,B,C,D setupClass
+    class E,F,G deployClass
+    class H,I execClass
+    class J,K monitorClass
+    class L,M,N debugClass
 ```
 
-### Docker Development
-```bash
-# Build custom ML image
-./scripts/docker-build.sh
+### 📋 Step-by-Step Commands
 
-# Run workflow in container
-docker run -v $(pwd)/src/data:/data your-flyte-image
+#### 1. Prerequisites & Setup
+```bash
+# Verify required tools
+flytectl version          # Flyte CLI
+kubectl version --client  # Kubernetes CLI
+aws --version             # AWS CLI
+python --version          # Python 3.9+
+
+# Navigate to project directory
+cd /Users/bsingh/Documents/Dev/app_flyte_wf1
+```
+
+#### 2. 🔐 AWS Authentication
+```bash
+# Configure AWS credentials
+aws configure list --profile adfs
+
+# Update EKS kubeconfig
+aws eks update-kubeconfig --region us-east-1 --name education-eks-vV8VCAqw --profile adfs
+```
+
+#### 3. 🔗 Connect to Flyte Cluster
+```bash
+# Set up port forwarding
+kubectl port-forward -n flyte svc/flyte-binary-grpc 8089:8089 &
+kubectl port-forward -n flyte svc/flyte-binary-http 8088:8088 &
+
+# Verify services
+kubectl get pods -n flyte
+```
+
+#### 4. ⚙️ Configure Flyte CLI
+```bash
+# Create Flyte configuration
+mkdir -p .flyte
+cat > .flyte/config.yaml << EOF
+admin:
+  endpoint: localhost:8089
+  authType: Pkce
+  insecure: true
+logger:
+  show-source: true
+  level: 0
+EOF
+
+# Test connection
+flytectl --config .flyte/config.yaml get projects
+```
+
+#### 5. 📁 Project Management
+```bash
+# Create new project
+flytectl --config .flyte/config.yaml create project \
+  --id ml-workflows \
+  --name "ML Workflows" \
+  --description "Machine Learning workflows for credit scoring"
+
+# Verify project creation
+flytectl --config .flyte/config.yaml get projects
+```
+
+#### 6. 📝 Workflow Registration
+```bash
+# Register ML pipeline (recommended - public image)
+pyflyte --config .flyte/config.yaml register \
+  --project ml-workflows \
+  --domain development \
+  --image ghcr.io/flyteorg/flytekit:py3.9-1.10.3 \
+  ml_pipeline_improved.py
+
+# Verify registration
+flytectl --config .flyte/config.yaml get workflows \
+  --project ml-workflows \
+  --domain development
+```
+
+#### 7. 🚀 Launch Plan Management
+```bash
+# View launch plans
+flytectl --config .flyte/config.yaml get launchplan \
+  --project ml-workflows \
+  --domain development \
+  ml_pipeline_improved.credit_scoring_pipeline
+
+# Generate execution config
+flytectl --config .flyte/config.yaml get launchplan \
+  --project ml-workflows \
+  --domain development \
+  --version <VERSION_ID> \
+  ml_pipeline_improved.credit_scoring_pipeline \
+  --execFile execution_config.yaml
+```
+
+#### 8. ▶️ Execution Commands
+```bash
+# Execute credit scoring pipeline
+flytectl --config .flyte/config.yaml create execution \
+  --project ml-workflows \
+  --domain development \
+  --execFile execution_config.yaml
+
+# Execute with custom data
+cat > generic_execution.yaml << EOF
+iamRoleARN: ""
+inputs:
+  data_path: "s3://bsingh-ml-workflows/new-dataset/data.csv"
+envs: {}
+kubeServiceAcct: ""
+targetDomain: ""
+targetProject: ""
+version: <VERSION_ID>
+workflow: ml_pipeline_improved.generic_ml_pipeline
+EOF
+```
+
+#### 9. 📊 Monitor Executions
+```bash
+# List recent executions
+flytectl --config .flyte/config.yaml get executions \
+  --project ml-workflows \
+  --domain development \
+  --limit 10
+
+# Check specific execution
+flytectl --config .flyte/config.yaml get execution \
+  --project ml-workflows \
+  --domain development \
+  <EXECUTION_ID>
+
+# Real-time monitoring
+watch -n 5 "flytectl --config .flyte/config.yaml get execution \
+  --project ml-workflows --domain development <EXECUTION_ID>"
+```
+
+#### 10. 🔍 Debugging Commands
+```bash
+# Get execution details with errors
+flytectl --config .flyte/config.yaml get execution \
+  --project ml-workflows \
+  --domain development \
+  <EXECUTION_ID> \
+  -o yaml | grep -A 20 "error:"
+
+# Check pod status
+kubectl get pods -n ml-workflows-development
+kubectl describe pod <POD_NAME> -n ml-workflows-development
+kubectl logs <POD_NAME> -n ml-workflows-development
+
+# Check execution inputs/outputs
+flytectl --config .flyte/config.yaml get execution \
+  --project ml-workflows \
+  --domain development \
+  <EXECUTION_ID> \
+  -o json | jq '.spec.inputs'
+```
+
+### 🆘 Common Issues & Quick Fixes
+
+| Issue | Quick Fix Command |
+|-------|------------------|
+| **Pod Scheduling Issues** | `kubectl describe pod <POD_NAME> -n ml-workflows-development` |
+| **Image Pull Errors** | Re-register with: `--image ghcr.io/flyteorg/flytekit:py3.9-1.10.3` |
+| **S3 Access Denied** | `aws s3 ls s3://bsingh-ml-workflows/ --profile adfs` |
+| **Port Forward Timeout** | `pkill -f "port-forward"` then restart port-forward |
+| **Auth Issues** | `aws eks update-kubeconfig --region us-east-1 --name education-eks-vV8VCAqw --profile adfs` |
+
+### 🎯 Quick Command Reference
+```bash
+# Daily workflow (copy-paste ready)
+kubectl port-forward -n flyte svc/flyte-binary-grpc 8089:8089 &
+kubectl port-forward -n flyte svc/flyte-binary-http 8088:8088 &
+pyflyte --config .flyte/config.yaml register --project ml-workflows --domain development --image ghcr.io/flyteorg/flytekit:py3.9-1.10.3 ml_pipeline_improved.py
+flytectl --config .flyte/config.yaml create execution --project ml-workflows --domain development --execFile execution_config.yaml
 ```
 
 ## 📚 Documentation
@@ -151,3 +332,217 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Documentation**: Check the `docs/` directory
 - **Examples**: See `examples/` for working samples
 - **Issues**: Open GitHub issues for bugs and feature requests
+
+---
+
+## 🔄 ML Workflow Deployment Flow
+
+```mermaid
+flowchart TD
+    A[📋 Prerequisites & Setup] --> B[🔐 AWS Authentication]
+    B --> C[🔗 Connect to Flyte Cluster]
+    C --> D[⚙️ Configure Flyte CLI]
+    D --> E[📁 Project Management]
+    E --> F[📝 Workflow Registration]
+    F --> G[🚀 Launch Plan Management]
+    G --> H[▶️ Execution Commands]
+    H --> I[📊 Monitor Executions]
+    I --> J{🏃 Execution Status}
+    J -->|Success| K[✅ Completed]
+    J -->|Failed| L[🔍 Debugging]
+    J -->|Running| I
+    L --> M[🛠️ Troubleshooting]
+    M --> N[🔧 Fix Issues]
+    N --> F
+
+    %% Styling
+    classDef setupClass fill:#e1f5fe
+    classDef authClass fill:#f3e5f5
+    classDef deployClass fill:#e8f5e8
+    classDef execClass fill:#fff3e0
+    classDef monitorClass fill:#fce4ec
+    classDef debugClass fill:#ffebee
+
+    class A,B,C,D setupClass
+    class E,F,G deployClass
+    class H,I execClass
+    class J,K monitorClass
+    class L,M,N debugClass
+```
+
+### 📋 Deployment Step-by-Step Commands
+
+#### 1. Prerequisites & Setup
+```bash
+# Verify required tools
+flytectl version          # Flyte CLI
+kubectl version --client  # Kubernetes CLI
+aws --version             # AWS CLI
+python --version          # Python 3.9+
+
+# Navigate to project directory
+cd /Users/bsingh/Documents/Dev/app_flyte_wf1
+```
+
+#### 2. 🔐 AWS Authentication
+```bash
+# Configure AWS credentials
+aws configure list --profile adfs
+
+# Update EKS kubeconfig
+aws eks update-kubeconfig --region us-east-1 --name education-eks-vV8VCAqw --profile adfs
+```
+
+#### 3. 🔗 Connect to Flyte Cluster
+```bash
+# Set up port forwarding
+kubectl port-forward -n flyte svc/flyte-binary-grpc 8089:8089 &
+kubectl port-forward -n flyte svc/flyte-binary-http 8088:8088 &
+
+# Verify services
+kubectl get pods -n flyte
+```
+
+#### 4. ⚙️ Configure Flyte CLI
+```bash
+# Create Flyte configuration
+mkdir -p .flyte
+cat > .flyte/config.yaml << EOF
+admin:
+  endpoint: localhost:8089
+  authType: Pkce
+  insecure: true
+logger:
+  show-source: true
+  level: 0
+EOF
+
+# Test connection
+flytectl --config .flyte/config.yaml get projects
+```
+
+#### 5. 📁 Project Management
+```bash
+# Create new project
+flytectl --config .flyte/config.yaml create project \
+  --id ml-workflows \
+  --name "ML Workflows" \
+  --description "Machine Learning workflows for credit scoring"
+
+# Verify project creation
+flytectl --config .flyte/config.yaml get projects
+```
+
+#### 6. 📝 Workflow Registration
+```bash
+# Register ML pipeline (recommended - public image)
+pyflyte --config .flyte/config.yaml register \
+  --project ml-workflows \
+  --domain development \
+  --image ghcr.io/flyteorg/flytekit:py3.9-1.10.3 \
+  ml_pipeline_improved.py
+
+# Verify registration
+flytectl --config .flyte/config.yaml get workflows \
+  --project ml-workflows \
+  --domain development
+```
+
+#### 7. 🚀 Launch Plan Management
+```bash
+# View launch plans
+flytectl --config .flyte/config.yaml get launchplan \
+  --project ml-workflows \
+  --domain development \
+  ml_pipeline_improved.credit_scoring_pipeline
+
+# Generate execution config
+flytectl --config .flyte/config.yaml get launchplan \
+  --project ml-workflows \
+  --domain development \
+  --version <VERSION_ID> \
+  ml_pipeline_improved.credit_scoring_pipeline \
+  --execFile execution_config.yaml
+```
+
+#### 8. ▶️ Execution Commands
+```bash
+# Execute credit scoring pipeline
+flytectl --config .flyte/config.yaml create execution \
+  --project ml-workflows \
+  --domain development \
+  --execFile execution_config.yaml
+
+# Execute with custom data
+cat > generic_execution.yaml << EOF
+iamRoleARN: ""
+inputs:
+  data_path: "s3://bsingh-ml-workflows/new-dataset/data.csv"
+envs: {}
+kubeServiceAcct: ""
+targetDomain: ""
+targetProject: ""
+version: <VERSION_ID>
+workflow: ml_pipeline_improved.generic_ml_pipeline
+EOF
+```
+
+#### 9. 📊 Monitor Executions
+```bash
+# List recent executions
+flytectl --config .flyte/config.yaml get executions \
+  --project ml-workflows \
+  --domain development \
+  --limit 10
+
+# Check specific execution
+flytectl --config .flyte/config.yaml get execution \
+  --project ml-workflows \
+  --domain development \
+  <EXECUTION_ID>
+
+# Real-time monitoring
+watch -n 5 "flytectl --config .flyte/config.yaml get execution \
+  --project ml-workflows --domain development <EXECUTION_ID>"
+```
+
+#### 10. 🔍 Debugging Commands
+```bash
+# Get execution details with errors
+flytectl --config .flyte/config.yaml get execution \
+  --project ml-workflows \
+  --domain development \
+  <EXECUTION_ID> \
+  -o yaml | grep -A 20 "error:"
+
+# Check pod status
+kubectl get pods -n ml-workflows-development
+kubectl describe pod <POD_NAME> -n ml-workflows-development
+kubectl logs <POD_NAME> -n ml-workflows-development
+
+# Check execution inputs/outputs
+flytectl --config .flyte/config.yaml get execution \
+  --project ml-workflows \
+  --domain development \
+  <EXECUTION_ID> \
+  -o json | jq '.spec.inputs'
+```
+
+### 🆘 Common Issues & Quick Fixes
+
+| Issue | Quick Fix Command |
+|-------|------------------|
+| **Pod Scheduling Issues** | `kubectl describe pod <POD_NAME> -n ml-workflows-development` |
+| **Image Pull Errors** | Re-register with: `--image ghcr.io/flyteorg/flytekit:py3.9-1.10.3` |
+| **S3 Access Denied** | `aws s3 ls s3://bsingh-ml-workflows/ --profile adfs` |
+| **Port Forward Timeout** | `pkill -f "port-forward"` then restart port-forward |
+| **Auth Issues** | `aws eks update-kubeconfig --region us-east-1 --name education-eks-vV8VCAqw --profile adfs` |
+
+### 🎯 Quick Command Reference
+```bash
+# Daily workflow (copy-paste ready)
+kubectl port-forward -n flyte svc/flyte-binary-grpc 8089:8089 &
+kubectl port-forward -n flyte svc/flyte-binary-http 8088:8088 &
+pyflyte --config .flyte/config.yaml register --project ml-workflows --domain development --image ghcr.io/flyteorg/flytekit:py3.9-1.10.3 ml_pipeline_improved.py
+flytectl --config .flyte/config.yaml create execution --project ml-workflows --domain development --execFile execution_config.yaml
+```
