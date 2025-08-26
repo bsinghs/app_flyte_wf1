@@ -118,40 +118,76 @@ graph TB
 
 ```mermaid
 graph TD
-    subgraph "Data Scientist Environment"
-        subgraph "Jupyter Notebook"
-            CELL1[Cell 1: Import CDAO SDK<br/>import cdao_sdk]
-            CELL2[Cell 2: Define ML Tasks<br/>@cdao_sdk.task]
-            CELL3[Cell 3: Create Workflow<br/>@cdao_sdk.workflow]
-            CELL4[Cell 4: Execute Remotely<br/>cdao_sdk.run()]
+    subgraph DSE ["Data Scientist Environment"]
+        subgraph JN ["Jupyter Notebook"]
+            CELL1["Cell 1: Import CDAO SDK"]
+            CELL2["Cell 2: Define ML Tasks"]
+            CELL3["Cell 3: Create Workflow"]
+            CELL4["Cell 4: Execute Remotely"]
         end
         
-        subgraph "CDAO SDK Components"
-            AUTH[Pre-configured Auth<br/>Control Plane Access]
-            CLIENT[Flyte Client<br/>API Wrapper]
-            DECORATORS[Task Decorators<br/>@gpu_task, @batch_task]
-            EXEC[Execution Manager<br/>Remote Submission]
+        subgraph SDK ["CDAO SDK Components"]
+            AUTH["Pre-configured Auth"]
+            CLIENT["Flyte Client"]
+            DECORATORS["Task Decorators"]
+            EXEC["Execution Manager"]
         end
     end
     
-    subgraph "Control Plane (AWS Account)"
-        FA[Flyte Admin<br/>Workflow Registration]
-        FP[Flyte Propeller<br/>Plugin Coordinator]
+    subgraph CP ["Control Plane AWS Account"]
+        FA["Flyte Admin"]
+        FP["Flyte Propeller"]
         
-        subgraph "Flyte Plugins"
-            K8S_PLUGIN[K8s Plugin<br/>Local EKS Execution]
-            CW_PLUGIN[Codeweave Plugin<br/>GPU Workloads]
-            BATCH_PLUGIN[AWS Batch Plugin<br/>Spot Instances]
-            EMR_PLUGIN[EMR Plugin<br/>Spark Jobs]
+        subgraph PLUGINS ["Flyte Plugins"]
+            K8S_PLUGIN["K8s Plugin"]
+            CW_PLUGIN["Codeweave Plugin"]
+            BATCH_PLUGIN["AWS Batch Plugin"]
+            EMR_PLUGIN["EMR Plugin"]
         end
     end
     
-    subgraph "Execution Environments"
-        EKS_POD[EKS Pods<br/>Quick Tasks]
-        CW_GPU[Codeweave GPU<br/>ML Training]
-        AWS_BATCH[AWS Batch<br/>Long Jobs]
-        EMR_SPARK[EMR Spark<br/>Big Data]
+    subgraph EE ["Execution Environments"]
+        EKS_POD["EKS Pods"]
+        CW_GPU["Codeweave GPU"]
+        AWS_BATCH["AWS Batch"]
+        EMR_SPARK["EMR Spark"]
     end
+    
+    %% User Flow
+    CELL1 --> AUTH
+    CELL2 --> DECORATORS
+    CELL3 --> CLIENT
+    CELL4 --> EXEC
+    
+    %% SDK to Control Plane
+    EXEC --> FA
+    FA --> FP
+    
+    %% Plugin Routing
+    FP --> K8S_PLUGIN
+    FP --> CW_PLUGIN
+    FP --> BATCH_PLUGIN
+    FP --> EMR_PLUGIN
+    
+    %% Execution
+    K8S_PLUGIN --> EKS_POD
+    CW_PLUGIN --> CW_GPU
+    BATCH_PLUGIN --> AWS_BATCH
+    EMR_PLUGIN --> EMR_SPARK
+    
+    %% Styling
+    classDef notebook fill:#2ecc71,stroke:#fff,color:#fff
+    classDef sdk fill:#3498db,stroke:#fff,color:#fff
+    classDef controlPlane fill:#663399,stroke:#fff,color:#fff
+    classDef plugin fill:#9b59b6,stroke:#fff,color:#fff
+    classDef execution fill:#e74c3c,stroke:#fff,color:#fff
+    
+    class CELL1,CELL2,CELL3,CELL4 notebook
+    class AUTH,CLIENT,DECORATORS,EXEC sdk
+    class FA,FP controlPlane
+    class K8S_PLUGIN,CW_PLUGIN,BATCH_PLUGIN,EMR_PLUGIN plugin
+    class EKS_POD,CW_GPU,AWS_BATCH,EMR_SPARK execution
+```
     
     %% User Flow
     CELL1 --> AUTH
