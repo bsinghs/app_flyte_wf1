@@ -4,12 +4,15 @@ A comprehensive guide for deploying Flyte on AWS with EKS, PostgreSQL, and multi
 
 ## 📋 Table of Contents
 1. [Architecture Overview](#architecture-overview)
-2. [Infrastructure Components](#infrastructure-components)
-3. [Network Architecture](#network-architecture)
-4. [Access Roles & Security](#access-roles--security)
-5. [Multi-Compute Execution](#multi-compute-execution)
-6. [Deployment Flow](#deployment-flow)
-7. [Configuration Examples](#configuration-examples)
+2. [CDAO SDK Integration](#cdao-sdk-integration)
+3. [Infrastructure Components](#infrastructure-components)
+4. [Flyte Propeller & Plugin Architecture](#flyte-propeller--plugin-architecture)
+5. [Network Architecture](#network-architecture)
+6. [Access Roles & Security](#access-roles--security)
+7. [Multi-Compute Execution](#multi-compute-execution)
+8. [User Workflow with CDAO SDK](#user-workflow-with-cdao-sdk)
+9. [Deployment Flow](#deployment-flow)
+10. [Configuration Examples](#configuration-examples)
 
 ---
 
@@ -17,69 +20,226 @@ A comprehensive guide for deploying Flyte on AWS with EKS, PostgreSQL, and multi
 
 ```mermaid
 graph TB
-    subgraph "AWS Account - Production Environment"
+    subgraph "Control Plane Account - AWS"
         subgraph "VPC (10.0.0.0/16)"
             subgraph "Private Subnets"
                 subgraph "EKS Cluster"
-                    FA[Flyte Admin]
-                    FP[Flyte Propeller]
-                    FC[Flyte Console]
-                    FDC[FlyteDC]
+                    FA[Flyte Admin<br/>Control Plane API]
+                    FP[Flyte Propeller<br/>Plugin Orchestrator]
+                    FC[Flyte Console<br/>Web UI]
+                    FDC[FlyteDC<br/>Data Catalog]
                 end
                 
                 subgraph "Data Layer"
-                    RDS[(PostgreSQL RDS)]
-                    S3[S3 Buckets]
+                    RDS[(PostgreSQL RDS<br/>Metadata Store)]
+                    S3[S3 Buckets<br/>Artifact Storage]
                 end
             end
             
             subgraph "Public Subnets"
-                ALB[Application Load Balancer]
-                NAT[NAT Gateway]
+                ALB[Application Load Balancer<br/>API Gateway]
+                NAT[NAT Gateway<br/>External Access]
             end
         end
         
         subgraph "IAM Roles & Policies"
             ER[EKS Service Role]
             NR[Node Group Role]
-            PR[Pod Execution Role]
+            PR[Propeller Execution Role]
             CR[Cross-Account Role]
         end
     end
     
-    subgraph "External Compute - Codeweave"
-        CW[Codeweave Platform]
-        CWE[Execution Environment]
+    subgraph "User Environment"
+        subgraph "Data Scientist Workspace"
+            NB[Jupyter Notebook<br/>Experimentation]
+            CDAO[CDAO SDK<br/>Pre-configured Client]
+            CODE[Python Code<br/>ML Workflows]
+        end
     end
     
-    subgraph "Developer Access"
-        DEV[Developer Workstation]
-        CLI[Flyte CLI]
+    subgraph "External Compute Platforms"
+        subgraph "Codeweave Platform"
+            CW[Codeweave API<br/>api.codeweave.com]
+            CWE[GPU Execution Environment<br/>K8s Clusters]
+        end
+        
+        subgraph "AWS Batch"
+            BATCH[Batch Compute Environment<br/>Spot/On-Demand Instances]
+        end
+        
+        subgraph "Amazon EMR"
+            EMR[EMR Spark Clusters<br/>Big Data Processing]
+        end
     end
     
-    %% Connections
-    DEV --> ALB
+    %% User Workflow
+    NB --> CDAO
+    CDAO --> CODE
+    CODE --> ALB
+    
+    %% Control Plane Flow
     ALB --> FC
+    ALB --> FA
     FC --> FA
     FA --> RDS
     FA --> S3
     FP --> FA
+    
+    %% Plugin-based External Execution
     FP --> CW
-    FP --> S3
+    FP --> BATCH
+    FP --> EMR
+    
+    %% Data Flow
     CW --> S3
+    BATCH --> S3
+    EMR --> S3
     
     %% Styling
-    classDef awsService fill:#ff9900,stroke:#232f3e,color:#fff
-    classDef flyte fill:#663399,stroke:#232f3e,color:#fff
-    classDef storage fill:#3498db,stroke:#232f3e,color:#fff
-    classDef external fill:#e74c3c,stroke:#232f3e,color:#fff
-    classDef network fill:#2ecc71,stroke:#232f3e,color:#fff
+    classDef controlPlane fill:#663399,stroke:#fff,color:#fff
+    classDef userEnv fill:#2ecc71,stroke:#fff,color:#fff
+    classDef external fill:#e74c3c,stroke:#fff,color:#fff
+    classDef storage fill:#3498db,stroke:#fff,color:#fff
+    classDef network fill:#f39c12,stroke:#fff,color:#fff
+    classDef aws fill:#ff9900,stroke:#fff,color:#fff
     
-    class FA,FP,FC,FDC flyte
+    class FA,FP,FC,FDC controlPlane
+    class NB,CDAO,CODE userEnv
+    class CW,CWE external
     class RDS,S3 storage
     class ALB,NAT network
-    class CW,CWE external
-    class ER,NR,PR,CR awsService
+    class BATCH,EMR aws
+```
+
+## 📚 CDAO SDK Integration
+
+### SDK Architecture & User Flow
+
+```mermaid
+graph TD
+    subgraph "Data Scientist Environment"
+        subgraph "Jupyter Notebook"
+            CELL1[Cell 1: Import CDAO SDK<br/>import cdao_sdk]
+            CELL2[Cell 2: Define ML Tasks<br/>@cdao_sdk.task]
+            CELL3[Cell 3: Create Workflow<br/>@cdao_sdk.workflow]
+            CELL4[Cell 4: Execute Remotely<br/>cdao_sdk.run()]
+        end
+        
+        subgraph "CDAO SDK Components"
+            AUTH[Pre-configured Auth<br/>Control Plane Access]
+            CLIENT[Flyte Client<br/>API Wrapper]
+            DECORATORS[Task Decorators<br/>@gpu_task, @batch_task]
+            EXEC[Execution Manager<br/>Remote Submission]
+        end
+    end
+    
+    subgraph "Control Plane (AWS Account)"
+        FA[Flyte Admin<br/>Workflow Registration]
+        FP[Flyte Propeller<br/>Plugin Coordinator]
+        
+        subgraph "Flyte Plugins"
+            K8S_PLUGIN[K8s Plugin<br/>Local EKS Execution]
+            CW_PLUGIN[Codeweave Plugin<br/>GPU Workloads]
+            BATCH_PLUGIN[AWS Batch Plugin<br/>Spot Instances]
+            EMR_PLUGIN[EMR Plugin<br/>Spark Jobs]
+        end
+    end
+    
+    subgraph "Execution Environments"
+        EKS_POD[EKS Pods<br/>Quick Tasks]
+        CW_GPU[Codeweave GPU<br/>ML Training]
+        AWS_BATCH[AWS Batch<br/>Long Jobs]
+        EMR_SPARK[EMR Spark<br/>Big Data]
+    end
+    
+    %% User Flow
+    CELL1 --> AUTH
+    CELL2 --> DECORATORS
+    CELL3 --> CLIENT
+    CELL4 --> EXEC
+    
+    %% SDK to Control Plane
+    EXEC --> FA
+    FA --> FP
+    
+    %% Plugin Routing
+    FP --> K8S_PLUGIN
+    FP --> CW_PLUGIN
+    FP --> BATCH_PLUGIN
+    FP --> EMR_PLUGIN
+    
+    %% Execution
+    K8S_PLUGIN --> EKS_POD
+    CW_PLUGIN --> CW_GPU
+    BATCH_PLUGIN --> AWS_BATCH
+    EMR_PLUGIN --> EMR_SPARK
+    
+    %% Styling
+    classDef notebook fill:#2ecc71,stroke:#fff,color:#fff
+    classDef sdk fill:#3498db,stroke:#fff,color:#fff
+    classDef controlPlane fill:#663399,stroke:#fff,color:#fff
+    classDef plugin fill:#9b59b6,stroke:#fff,color:#fff
+    classDef execution fill:#e74c3c,stroke:#fff,color:#fff
+    
+    class CELL1,CELL2,CELL3,CELL4 notebook
+    class AUTH,CLIENT,DECORATORS,EXEC sdk
+    class FA,FP controlPlane
+    class K8S_PLUGIN,CW_PLUGIN,BATCH_PLUGIN,EMR_PLUGIN plugin
+    class EKS_POD,CW_GPU,AWS_BATCH,EMR_SPARK execution
+```
+
+### CDAO SDK Example Usage
+
+```python
+# Cell 1: Import and configure CDAO SDK
+import cdao_sdk
+from cdao_sdk import task, workflow, gpu_task, batch_task
+
+# SDK is pre-configured with control plane access
+cdao_sdk.configure(
+    admin_endpoint="https://flyte.your-domain.com",
+    project="ml-experiments",
+    domain="development"
+)
+
+# Cell 2: Define ML tasks with platform targeting
+@gpu_task(
+    platform="codeweave",
+    gpu_type="nvidia-tesla-v100",
+    memory="32Gi"
+)
+def train_model(dataset_path: str, model_config: dict) -> str:
+    # This runs on Codeweave GPU infrastructure
+    return "s3://bucket/trained-model.pkl"
+
+@batch_task(
+    platform="aws-batch",
+    instance_type="c5.4xlarge",
+    spot_instances=True
+)
+def preprocess_data(raw_data_path: str) -> str:
+    # This runs on AWS Batch with spot instances
+    return "s3://bucket/processed-data.parquet"
+
+# Cell 3: Create workflow
+@workflow
+def ml_pipeline(data_path: str) -> str:
+    processed_data = preprocess_data(raw_data_path=data_path)
+    model_path = train_model(
+        dataset_path=processed_data,
+        model_config={"epochs": 100, "lr": 0.001}
+    )
+    return model_path
+
+# Cell 4: Execute remotely
+execution = cdao_sdk.run(
+    workflow=ml_pipeline,
+    inputs={"data_path": "s3://bucket/raw-data.csv"}
+)
+
+# Monitor execution in real-time
+cdao_sdk.monitor(execution.id)
 ```
 
 ## 🔧 Infrastructure Components
